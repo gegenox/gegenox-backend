@@ -1,0 +1,25 @@
+# Forçar HTTPS
+RewriteEngine On
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Permitir CORS apenas do domínio permitido
+Header set Access-Control-Allow-Origin "https://ggblox.com.br"
+Header set Access-Control-Allow-Methods "GET,PUT,POST,DELETE,PATCH,OPTIONS"
+Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, Accept, Origin"
+Header set Access-Control-Allow-Credentials "true"
+
+# Configurações adicionais de segurança
+Header always set X-Frame-Options "SAMEORIGIN"
+Header always set X-XSS-Protection "1; mode=block"
+Header always set X-Content-Type-Options "nosniff"
+Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+# Permitir acesso à porta personalizada
+RewriteCond %{SERVER_PORT} !^21135$
+RewriteRule ^(.*)$ https://%{HTTP_HOST}:21135%{REQUEST_URI} [L,R=301]
+
+# Bloquear requisições de outros domínios
+RewriteCond %{HTTP_REFERER} !^$
+RewriteCond %{HTTP_REFERER} !^https://ggblox\.com.br [NC]
+RewriteRule .* - [F] 

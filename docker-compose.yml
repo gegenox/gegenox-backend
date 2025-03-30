@@ -1,0 +1,17 @@
+services:
+  api:
+    container_name: api
+    build: .
+    ports:
+      - 3001:3001
+    volumes:
+      - .:/usr/app
+    restart: always
+    env_file:
+      - .env
+    networks:
+      - ggnoxofc_network
+
+networks:
+  ggnoxofc_network:
+    driver: bridge
