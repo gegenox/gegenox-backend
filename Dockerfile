@@ -9,11 +9,9 @@ COPY package.json ./
 # COPY prisma ./prisma
 COPY . .
 
-RUN npm install --frozen-lockfile && \
-  npm run build
-
+RUN npm install --frozen-lockfile 
 COPY . .
 
 EXPOSE 3001
 
-CMD ["node", "build/shared/infra/http/server.js"]
+CMD ["node", "src/index.js"]
