@@ -12,27 +12,27 @@ const corsOptions = {
 };
 
 // Middleware CORS personalizado
-const corsMiddleware = (req, res, next) => {
-  // Permite webhook sem restrições
-  if (req.path === "/payments/webhooks") {
-    return next();
-  }
+// const corsMiddleware = (req, res, next) => {
+//   // Permite webhook sem restrições
+//   if (req.path === "/payments/webhooks") {
+//     return next();
+//   }
 
-  // Verifica origem para outras rotas
-  const origin = req.headers.origin;
-  if (origin === "https://ggnoxofc.com") {
-    res.header("Access-Control-Allow-Origin", origin);
-    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
-    res.header("Access-Control-Allow-Credentials", "true");
-    return next();
-  }
+//   // Verifica origem para outras rotas
+//   const origin = req.headers.origin;
+//   if (origin === "https://ggnoxofc.com") {
+//     res.header("Access-Control-Allow-Origin", origin);
+//     res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+//     res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
+//     res.header("Access-Control-Allow-Credentials", "true");
+//     return next();
+//   }
 
-  return res.status(403).json({ error: "Acesso não autorizado" });
-};
+//   return res.status(403).json({ error: "Acesso não autorizado" });
+// };
 
 // Aplica middleware CORS
-router.use(corsMiddleware);
+// router.use(corsMiddleware);
 
 // Importar outras rotas
 const categoriesRoutes = require("./categories");

@@ -1,27 +1,27 @@
-const db = require('../config/database');
-const nodemailer = require('nodemailer');
-const axios = require('axios');
-const primepagConfig = require('../config/primepag');
+const db = require("../config/database");
+const nodemailer = require("nodemailer");
+const axios = require("axios");
+const primepagConfig = require("../config/primepag");
 
 // Configuração do transportador de email
 const transporter = nodemailer.createTransport({
-  host: 'smtp.hostinger.com',
+  host: "smtp.hostinger.com",
   port: 465,
   secure: true, // true para 465, false para outras portas
   auth: {
-    user: 'entrega@seurobux.com',
-    pass: 'Galaxyreeform123@'
+    user: "entrega@ggnoxofc.com",
+    pass: "Geniuscacetada123@",
   },
   debug: true, // Ativa logs detalhados
-  logger: true  // Mostra logs do SMTP
+  logger: true, // Mostra logs do SMTP
 });
 
 // Testar a conexão ao inicializar
 transporter.verify((error, success) => {
   if (error) {
-    console.error('Erro na configuração do email:', error);
+    console.error("Erro na configuração do email:", error);
   } else {
-    console.log('Servidor de email pronto!');
+    console.log("Servidor de email pronto!");
   }
 });
 
@@ -50,7 +50,9 @@ class PaymentController {
          )`
       );
 
-      console.log(`Encontrados ${expiredPayments.length} pagamentos expirados com itens reservados`);
+      console.log(
+        `Encontrados ${expiredPayments.length} pagamentos expirados com itens reservados`
+      );
 
       for (const payment of expiredPayments) {
         console.log(`Processando pagamento expirado ID: ${payment.id}`);
@@ -78,10 +80,10 @@ class PaymentController {
       }
 
       await connection.commit();
-      console.log('Verificação de pagamentos expirados concluída');
+      console.log("Verificação de pagamentos expirados concluída");
     } catch (error) {
       await connection.rollback();
-      console.error('Erro ao verificar pagamentos expirados:', error);
+      console.error("Erro ao verificar pagamentos expirados:", error);
     } finally {
       connection.release();
     }
@@ -91,18 +93,24 @@ class PaymentController {
     const connection = await db.getConnection();
     try {
       const { amount, items, email, customer, cupom } = req.body;
-      console.log('Dados recebidos para criação de pagamento:', { amount, email, customer, cupom, items: items.length });
+      console.log("Dados recebidos para criação de pagamento:", {
+        amount,
+        email,
+        customer,
+        cupom,
+        items: items.length,
+      });
 
       const paymentData = {
         amount: parseFloat(amount),
         external_id: `PAY-${Date.now()}`,
         payer: {
           name: customer.name,
-          document: customer.document.replace(/\D/g, ''),
-          email: email
+          document: customer.document.replace(/\D/g, ""),
+          email: email,
         },
         payerQuestion: "Pagamento GGNOX",
-        expiresIn: 300
+        expiresIn: 300,
       };
 
       try {
@@ -113,7 +121,7 @@ class PaymentController {
             'SELECT * FROM coupons WHERE code = ? AND status = "ATIVO"',
             [cupom.toUpperCase()]
           );
-          
+
           if (cupomResult.length > 0) {
             cupomData = cupomResult[0];
           }
@@ -123,7 +131,7 @@ class PaymentController {
         const response = await primepagConfig.createPayment(paymentData);
 
         if (!response.qr_code || !response.qr_code.text) {
-          throw new Error('QR Code não retornado');
+          throw new Error("QR Code não retornado");
         }
 
         // Inserir na base de dados
@@ -144,30 +152,32 @@ class PaymentController {
           [
             paymentData.external_id,
             amount,
-            'pending',
+            "pending",
             response.qr_code.text,
             response.payment_id, // Ajustado para usar payment_id da PrimePag
             email,
             customer.name,
             customer.document,
             cupomData ? cupomData.code : null,
-            cupomData ? cupomData.discount : null
+            cupomData ? cupomData.discount : null,
           ]
         );
 
         // Adicionar log para debug
-        console.log('Pagamento criado:', {
+        console.log("Pagamento criado:", {
           payment_id: result.insertId,
-          cupom: cupomData ? {
-            code: cupomData.code,
-            discount: cupomData.discount
-          } : null
+          cupom: cupomData
+            ? {
+                code: cupomData.code,
+                discount: cupomData.discount,
+              }
+            : null,
         });
 
         // Reservar itens do estoque
         for (const item of items) {
           const quantity = item.quantity || 1; // Garante que tenha quantidade
-          
+
           // Atualizar a quantidade correta de itens
           await connection.query(
             `UPDATE stock_items 
@@ -183,13 +193,13 @@ class PaymentController {
         // Salvar informações do cupom
         if (cupomData) {
           await connection.query(
-            'UPDATE payments SET cupom_code = ?, cupom_discount = ? WHERE id = ?',
+            "UPDATE payments SET cupom_code = ?, cupom_discount = ? WHERE id = ?",
             [cupomData.code, cupomData.discount, result.insertId]
           );
-          
+
           // Incrementar uso do cupom
           await connection.query(
-            'UPDATE coupons SET times_used = times_used + 1 WHERE code = ?',
+            "UPDATE coupons SET times_used = times_used + 1 WHERE code = ?",
             [cupomData.code]
           );
         }
@@ -198,24 +208,24 @@ class PaymentController {
 
         res.json({
           payment_id: result.insertId,
-          qrcode_text: response.qr_code.text,       // Texto do PIX para copiar e colar
-          qrcode_base64: response.qr_code.image,    // Imagem base64 do QR code
+          qrcode_text: response.qr_code.text, // Texto do PIX para copiar e colar
+          qrcode_base64: response.qr_code.image, // Imagem base64 do QR code
           transaction_id: response.payment_id,
           external_id: paymentData.external_id,
           expires_in: 300,
-          amount: amount
+          amount: amount,
         });
-
       } catch (error) {
         await connection.rollback();
         throw error;
       }
     } catch (error) {
-      console.error('Erro ao criar pagamento:', error);
+      console.error("Erro ao criar pagamento:", error);
       if (!res.headersSent) {
-        res.status(500).json({ 
-          message: 'Erro ao processar pagamento',
-          error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        res.status(500).json({
+          message: "Erro ao processar pagamento",
+          error:
+            process.env.NODE_ENV === "development" ? error.message : undefined,
         });
       }
     } finally {
@@ -228,27 +238,30 @@ class PaymentController {
     res.status(200).end();
 
     try {
-      console.log('Iniciando handleWebhook da PrimePag:', {
+      console.log("Iniciando handleWebhook da PrimePag:", {
         body: req.body,
         headers: req.headers,
-        path: req.path
+        path: req.path,
       });
 
       const webhookData = await primepagConfig.processWebhook(req.body);
-      console.log('Webhook processado:', webhookData);
-      
+      console.log("Webhook processado:", webhookData);
+
       if (!webhookData || !webhookData.payment_id) {
-        console.error('Webhook inválido - dados faltando:', webhookData);
+        console.error("Webhook inválido - dados faltando:", webhookData);
         return; // Retornamos early pois já enviamos 200
       }
 
       // Verificar se é um pagamento confirmado
-      if (webhookData.status !== 'paid') {
-        console.log('Status não processável:', webhookData.status);
+      if (webhookData.status !== "paid") {
+        console.log("Status não processável:", webhookData.status);
         return; // Retornamos early pois já enviamos 200
       }
 
-      console.log('Buscando pagamento com external_id:', webhookData.external_id);
+      console.log(
+        "Buscando pagamento com external_id:",
+        webhookData.external_id
+      );
 
       // Buscar pagamento com informações do cupom
       const [payments] = await db.query(
@@ -261,15 +274,15 @@ class PaymentController {
         [webhookData.external_id]
       );
 
-      console.log('Pagamentos encontrados:', payments);
+      console.log("Pagamentos encontrados:", payments);
 
       const payment = payments[0];
       if (!payment) {
-        console.error('Pagamento não encontrado:', webhookData.external_id);
+        console.error("Pagamento não encontrado:", webhookData.external_id);
         return; // Retornamos early pois já enviamos 200
       }
 
-      console.log('Atualizando status do pagamento ID:', payment.id);
+      console.log("Atualizando status do pagamento ID:", payment.id);
 
       // Atualizar status do pagamento para completed
       const [updatePaymentResult] = await db.query(
@@ -281,7 +294,7 @@ class PaymentController {
         [payment.id]
       );
 
-      console.log('Resultado update pagamento:', updatePaymentResult);
+      console.log("Resultado update pagamento:", updatePaymentResult);
 
       // Atualizar status dos itens para SOLD
       const [updateItemsResult] = await db.query(
@@ -293,75 +306,83 @@ class PaymentController {
         [payment.id]
       );
 
-      console.log('Resultado update itens:', updateItemsResult);
+      console.log("Resultado update itens:", updateItemsResult);
 
       // Buscar produtos vendidos para o webhook do Discord
-      const [soldProducts] = await db.query(`
+      const [soldProducts] = await db.query(
+        `
         SELECT p.name, COUNT(*) as quantity
         FROM stock_items si 
         JOIN products p ON si.product_id = p.id 
         WHERE si.payment_id = ? AND si.status = 'SOLD'
         GROUP BY p.id, p.name
-      `, [payment.id]);
+      `,
+        [payment.id]
+      );
 
       // Preparar o embed para o Discord
       const embed = {
-        title: '💰 Nova Venda Realizada!',
+        title: "💰 Nova Venda Realizada!",
         color: 0x199a66,
         fields: [
           {
-            name: '👤 Cliente',
-            value: payment.customer_email || 'Não informado',
-            inline: true
+            name: "👤 Cliente",
+            value: payment.customer_email || "Não informado",
+            inline: true,
           },
           {
-            name: '💵 Valor Final',
-            value: `R$ ${(webhookData.amount).toFixed(2)}`,
-            inline: true
-          }
+            name: "💵 Valor Final",
+            value: `R$ ${webhookData.amount.toFixed(2)}`,
+            inline: true,
+          },
         ],
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
 
       // Adicionar informações do cupom se existir
       if (payment.cupom_code && payment.cupom_discount) {
-        const originalValue = webhookData.amount / (1 - payment.cupom_discount/100);
+        const originalValue =
+          webhookData.amount / (1 - payment.cupom_discount / 100);
         const discountValue = originalValue - webhookData.amount;
 
         embed.fields.push(
           {
-            name: '🏷️ Cupom Utilizado',
+            name: "🏷️ Cupom Utilizado",
             value: `\`${payment.cupom_code}\``,
-            inline: true
+            inline: true,
           },
           {
-            name: '💹 Desconto Aplicado',
-            value: `${payment.cupom_discount}% (-R$ ${discountValue.toFixed(2)})`,
-            inline: true
+            name: "💹 Desconto Aplicado",
+            value: `${payment.cupom_discount}% (-R$ ${discountValue.toFixed(
+              2
+            )})`,
+            inline: true,
           },
           {
-            name: '💰 Valor Original',
+            name: "💰 Valor Original",
             value: `R$ ${originalValue.toFixed(2)}`,
-            inline: true
+            inline: true,
           }
         );
       } else {
         embed.fields.push({
-          name: '🏷️ Cupom',
-          value: 'Nenhum cupom utilizado',
-          inline: true
+          name: "🏷️ Cupom",
+          value: "Nenhum cupom utilizado",
+          inline: true,
         });
       }
 
       // Adicionar produtos vendidos
       embed.fields.push({
-        name: '📦 Produtos',
-        value: soldProducts.map(p => `${p.quantity}x ${p.name}`).join('\n'),
-        inline: false
+        name: "📦 Produtos",
+        value: soldProducts.map((p) => `${p.quantity}x ${p.name}`).join("\n"),
+        inline: false,
       });
 
       // Enviar webhook para o Discord (apenas uma vez)
-      const [webhooks] = await db.query('SELECT url FROM discord_webhooks WHERE active = 1 LIMIT 1');
+      const [webhooks] = await db.query(
+        "SELECT url FROM discord_webhooks WHERE active = 1 LIMIT 1"
+      );
       if (webhooks[0]) {
         try {
           await axios.post(webhooks[0].url, { embeds: [embed] });
@@ -371,12 +392,15 @@ class PaymentController {
       }
 
       // Buscar códigos para enviar por email
-      const [items] = await db.query(`
+      const [items] = await db.query(
+        `
         SELECT si.code 
         FROM stock_items si
         WHERE si.payment_id = ? 
         AND si.status = 'SOLD'
-      `, [payment.id]);
+      `,
+        [payment.id]
+      );
 
       // Enviar email com os códigos
       if (items.length > 0) {
@@ -385,7 +409,12 @@ class PaymentController {
           <p>Olá ${payment.customer_name},</p>
           <p>Aqui estão seus códigos:</p>
           <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 10px 0;">
-            ${items.map(item => `<div style="font-family: monospace; margin: 5px 0;">${item.code}</div>`).join('')}
+            ${items
+              .map(
+                (item) =>
+                  `<div style="font-family: monospace; margin: 5px 0;">${item.code}</div>`
+              )
+              .join("")}
           </div>
           <p>Obrigado pela compra!</p>
         `;
@@ -393,14 +422,14 @@ class PaymentController {
         await transporter.sendMail({
           from: '"SeuRobux" <entrega@seurobux.com>',
           to: payment.customer_email,
-          subject: 'Sua compra foi confirmada!',
-          html: emailHtml
+          subject: "Sua compra foi confirmada!",
+          html: emailHtml,
         });
       }
 
-      console.log('Webhook processado com sucesso');
+      console.log("Webhook processado com sucesso");
     } catch (error) {
-      console.error('Erro no webhook:', error);
+      console.error("Erro no webhook:", error);
       // Não precisamos retornar nada pois já respondemos 200
     }
   }
@@ -409,71 +438,71 @@ class PaymentController {
     try {
       const { payment_id } = req.params;
 
-      const [payment] = await db.query(
-        'SELECT * FROM payments WHERE id = ?',
-        [payment_id]
-      );
+      const [payment] = await db.query("SELECT * FROM payments WHERE id = ?", [
+        payment_id,
+      ]);
 
       if (!payment[0]) {
-        return res.status(404).json({ message: 'Pagamento não encontrado' });
+        return res.status(404).json({ message: "Pagamento não encontrado" });
       }
 
-      if (payment[0].status === 'completed') {
+      if (payment[0].status === "completed") {
         const [items] = await db.query(
           `SELECT si.code 
            FROM stock_items si
            WHERE si.payment_id = ? AND si.status = 'SOLD'`,
           [payment_id]
         );
-        
+
         return res.json({
-          status: 'completed',
-          items: items.map(item => item.code)
+          status: "completed",
+          items: items.map((item) => item.code),
         });
       }
 
       try {
         // Usando PrimePag para verificar status
-        const status = await primepagConfig.getPaymentStatus(payment[0].transaction_id);
+        const status = await primepagConfig.getPaymentStatus(
+          payment[0].transaction_id
+        );
 
         if (status.status === "paid") {
           await db.query(
-              `UPDATE payments 
+            `UPDATE payments 
                SET status = 'completed',
                    completed_at = NOW()
                WHERE id = ? AND status = 'pending'`,
-              [payment_id]
-            );
+            [payment_id]
+          );
 
           await db.query(
-              `UPDATE stock_items 
+            `UPDATE stock_items 
                SET status = 'SOLD',
                    sold_at = NOW()
              WHERE payment_id = ? AND status = 'RESERVED'`,
-              [payment_id]
-            );
+            [payment_id]
+          );
 
           return res.json({
-            status: 'completed',
-            message: 'Pagamento confirmado'
+            status: "completed",
+            message: "Pagamento confirmado",
           });
         }
 
         return res.json({
-          status: 'pending',
-          message: 'Aguardando pagamento'
+          status: "pending",
+          message: "Aguardando pagamento",
         });
-
       } catch (error) {
-        console.error('Erro ao verificar status:', error);
+        console.error("Erro ao verificar status:", error);
         return res.json({
           status: payment[0].status,
-          message: 'Aguardando confirmação'
+          message: "Aguardando confirmação",
         });
       }
     } catch (error) {
-      console.error('Erro ao buscar status:', error);
-      res.status(500).json({ message: 'Erro interno' });
+      console.error("Erro ao buscar status:", error);
+      res.status(500).json({ message: "Erro interno" });
     }
   }
 
@@ -495,20 +524,22 @@ class PaymentController {
       );
 
       if (!payment) {
-        return res.status(404).json({ message: 'Pagamento não encontrado' });
+        return res.status(404).json({ message: "Pagamento não encontrado" });
       }
 
       return res.json({
         status: payment.status,
-        items: payment.codes ? payment.codes.split(',') : [],
-        products: payment.product_names ? payment.product_names.split(',') : [],
+        items: payment.codes ? payment.codes.split(",") : [],
+        products: payment.product_names ? payment.product_names.split(",") : [],
         paid_at: payment.completed_at,
-        message: payment.status === 'completed' ? 'Pagamento confirmado' : 'Aguardando pagamento'
+        message:
+          payment.status === "completed"
+            ? "Pagamento confirmado"
+            : "Aguardando pagamento",
       });
-
     } catch (error) {
-      console.error('Erro ao buscar status:', error);
-      res.status(500).json({ message: 'Erro interno' });
+      console.error("Erro ao buscar status:", error);
+      res.status(500).json({ message: "Erro interno" });
     }
   }
 
@@ -527,18 +558,24 @@ class PaymentController {
       );
 
       // Retorna array de códigos
-      return res.json(items.map(item => item.code));
-
+      return res.json(items.map((item) => item.code));
     } catch (error) {
-      console.error('Erro ao buscar itens vendidos:', error);
-      res.status(500).json({ message: 'Erro interno' });
+      console.error("Erro ao buscar itens vendidos:", error);
+      res.status(500).json({ message: "Erro interno" });
     }
   }
 
   async getSales(req, res) {
     try {
-      const { startDate, endDate, status, search, page = 1, limit = 25 } = req.query;
-      
+      const {
+        startDate,
+        endDate,
+        status,
+        search,
+        page = 1,
+        limit = 25,
+      } = req.query;
+
       let query = `
         SELECT 
           p.*,
@@ -547,61 +584,68 @@ class PaymentController {
         LEFT JOIN stock_items si ON si.payment_id = p.id
         LEFT JOIN products pr ON pr.id = si.product_id
       `;
-      
+
       const conditions = [];
       const params = [];
-      
+
       if (startDate) {
-        conditions.push('p.created_at >= ?');
+        conditions.push("p.created_at >= ?");
         params.push(startDate);
       }
-      
+
       if (endDate) {
-        conditions.push('p.created_at <= ?');
+        conditions.push("p.created_at <= ?");
         params.push(endDate);
       }
-      
+
       if (status) {
-        conditions.push('p.status = ?');
+        conditions.push("p.status = ?");
         params.push(status);
       }
-      
+
       if (search) {
-        conditions.push('(p.customer_email LIKE ? OR p.customer_name LIKE ? OR pr.name LIKE ?)');
+        conditions.push(
+          "(p.customer_email LIKE ? OR p.customer_name LIKE ? OR pr.name LIKE ?)"
+        );
         params.push(`%${search}%`, `%${search}%`, `%${search}%`);
       }
-      
+
       if (conditions.length) {
-        query += ' WHERE ' + conditions.join(' AND ');
+        query += " WHERE " + conditions.join(" AND ");
       }
-      
-      query += ' GROUP BY p.id ORDER BY p.created_at DESC';
-      
+
+      query += " GROUP BY p.id ORDER BY p.created_at DESC";
+
       // Contar total antes da paginação
-      const [countResult] = await db.query(`SELECT COUNT(*) as total FROM (${query}) as subquery`, params);
+      const [countResult] = await db.query(
+        `SELECT COUNT(*) as total FROM (${query}) as subquery`,
+        params
+      );
       const total = countResult[0].total;
-      
+
       // Adicionar paginação
-      query += ' LIMIT ? OFFSET ?';
+      query += " LIMIT ? OFFSET ?";
       params.push(Number(limit), (page - 1) * Number(limit));
-      
+
       const [sales] = await db.query(query, params);
-      
+
       res.json({
-        sales: sales.map(sale => ({
+        sales: sales.map((sale) => ({
           ...sale,
-          product_names: sale.product_names ? sale.product_names.split(',') : []
+          product_names: sale.product_names
+            ? sale.product_names.split(",")
+            : [],
         })),
         pagination: {
           total,
           pages: Math.ceil(total / limit),
           currentPage: Number(page),
-          limit: Number(limit)
-        }
+          limit: Number(limit),
+        },
       });
-            } catch (error) {
-      console.error('Erro ao buscar vendas:', error);
-      res.status(500).json({ error: 'Erro ao buscar vendas' });
+    } catch (error) {
+      console.error("Erro ao buscar vendas:", error);
+      res.status(500).json({ error: "Erro ao buscar vendas" });
     }
   }
 
@@ -616,7 +660,7 @@ class PaymentController {
         allTime: { total: 0, count: 0 },
         topProducts: [],
         recentSales: [],
-        chartData: []
+        chartData: [],
       };
 
       // Estatísticas gerais
@@ -635,21 +679,21 @@ class PaymentController {
       `);
 
       // Converter valores para números
-      stats.today = { 
-        total: Number(generalStats[0].today_total || 0), 
-        count: Number(generalStats[0].today_count || 0)
+      stats.today = {
+        total: Number(generalStats[0].today_total || 0),
+        count: Number(generalStats[0].today_count || 0),
       };
-      stats.week = { 
-        total: Number(generalStats[0].week_total || 0), 
-        count: Number(generalStats[0].week_count || 0)
+      stats.week = {
+        total: Number(generalStats[0].week_total || 0),
+        count: Number(generalStats[0].week_count || 0),
       };
-      stats.month = { 
-        total: Number(generalStats[0].month_total || 0), 
-        count: Number(generalStats[0].month_count || 0)
+      stats.month = {
+        total: Number(generalStats[0].month_total || 0),
+        count: Number(generalStats[0].month_count || 0),
       };
-      stats.allTime = { 
-        total: Number(generalStats[0].all_time_total || 0), 
-        count: Number(generalStats[0].all_time_count || 0)
+      stats.allTime = {
+        total: Number(generalStats[0].all_time_total || 0),
+        count: Number(generalStats[0].all_time_count || 0),
       };
 
       // Top 10 produtos
@@ -669,10 +713,10 @@ class PaymentController {
       `);
 
       // Converter valores para números
-      stats.topProducts = topProducts.map(product => ({
+      stats.topProducts = topProducts.map((product) => ({
         ...product,
         sales_count: Number(product.sales_count),
-        total_amount: Number(product.total_amount)
+        total_amount: Number(product.total_amount),
       }));
 
       // Últimas 10 vendas
@@ -692,12 +736,12 @@ class PaymentController {
       `);
 
       // Formatar vendas recentes
-      stats.recentSales = recentSales.map(sale => ({
+      stats.recentSales = recentSales.map((sale) => ({
         ...sale,
         amount: Number(sale.amount),
-        items: sale.items ? sale.items.split(',') : [],
-        product_names: sale.product_names ? sale.product_names.split(',') : [],
-        completed_at: sale.completed_at
+        items: sale.items ? sale.items.split(",") : [],
+        product_names: sale.product_names ? sale.product_names.split(",") : [],
+        completed_at: sale.completed_at,
       }));
 
       // Ordenar novamente para garantir a ordem mais recente primeiro
@@ -728,10 +772,10 @@ class PaymentController {
       `);
 
       // Formatar dados do gráfico
-      stats.chartData = chartData.map(data => ({
+      stats.chartData = chartData.map((data) => ({
         date: data.date,
         total_amount: Number(data.total_amount),
-        sales_count: Number(data.sales_count)
+        sales_count: Number(data.sales_count),
       }));
 
       res.json({
@@ -741,11 +785,11 @@ class PaymentController {
         allTime: stats.allTime,
         chartData: stats.chartData.reverse(), // Reverter para ordem cronológica
         topProducts: stats.topProducts,
-        recentSales: stats.recentSales
+        recentSales: stats.recentSales,
       });
     } catch (error) {
-      console.error('Erro ao buscar estatísticas:', error);
-      res.status(500).json({ message: 'Erro interno' });
+      console.error("Erro ao buscar estatísticas:", error);
+      res.status(500).json({ message: "Erro interno" });
     } finally {
       connection.release();
     }
@@ -753,132 +797,142 @@ class PaymentController {
 
   async checkPaymentStatus(payment_id) {
     try {
-      const [payment] = await db.query('SELECT * FROM payments WHERE id = ?', [payment_id]);
+      const [payment] = await db.query("SELECT * FROM payments WHERE id = ?", [
+        payment_id,
+      ]);
       if (!payment || payment.length === 0) return null;
 
       const paymentData = payment[0];
-      
+
       // Se já estiver completo, retornar os itens vendidos
-      if (paymentData.status === 'completed') {
-        const [items] = await db.query(`
+      if (paymentData.status === "completed") {
+        const [items] = await db.query(
+          `
           SELECT si.code 
           FROM stock_items si
           WHERE si.payment_id = ?
-        `, [payment_id]);
-        
+        `,
+          [payment_id]
+        );
+
         return {
-          status: 'completed',
-          items: items.map(item => item.code)
+          status: "completed",
+          items: items.map((item) => item.code),
         };
       }
 
       // ... resto do código de verificação
     } catch (error) {
-      console.error('Erro ao verificar status:', error);
+      console.error("Erro ao verificar status:", error);
       return null;
     }
   }
 
   static async sendDiscordWebhook(payment, items, cupom = null) {
     try {
-      const [webhooks] = await db.query('SELECT url FROM discord_webhooks WHERE active = 1');
-      
+      const [webhooks] = await db.query(
+        "SELECT url FROM discord_webhooks WHERE active = 1"
+      );
+
       if (!webhooks.length) return;
 
       // Calcular valor original e desconto se houver cupom
       const originalValue = payment.amount;
-      const discountValue = cupom ? (originalValue * cupom.discount / 100) : 0;
-      
+      const discountValue = cupom ? (originalValue * cupom.discount) / 100 : 0;
+
       const embed = {
-        title: '💰 Nova Venda Realizada!',
+        title: "💰 Nova Venda Realizada!",
         color: 0x199a66,
         fields: [
           {
-            name: '👤 Cliente',
-            value: payment.customer_email || 'Não informado',
-            inline: true
+            name: "👤 Cliente",
+            value: payment.customer_email || "Não informado",
+            inline: true,
           },
           {
-            name: '💵 Valor Final',
+            name: "💵 Valor Final",
             value: `R$ ${Number(payment.amount).toFixed(2)}`,
-            inline: true
-          }
+            inline: true,
+          },
         ],
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
 
       // Adicionar informações do cupom se foi utilizado
       if (cupom) {
         embed.fields.push(
           {
-            name: '🏷️ Cupom Utilizado',
+            name: "🏷️ Cupom Utilizado",
             value: `\`${cupom.code}\``,
-            inline: true
+            inline: true,
           },
           {
-            name: '💹 Desconto Aplicado',
+            name: "💹 Desconto Aplicado",
             value: `${cupom.discount}% (-R$ ${discountValue.toFixed(2)})`,
-            inline: true
+            inline: true,
           },
           {
-            name: '💰 Valor Original',
+            name: "💰 Valor Original",
             value: `R$ ${Number(originalValue).toFixed(2)}`,
-            inline: true
+            inline: true,
           }
         );
       } else {
         embed.fields.push({
-          name: '🏷️ Cupom',
-          value: 'Nenhum cupom utilizado',
-          inline: true
+          name: "🏷️ Cupom",
+          value: "Nenhum cupom utilizado",
+          inline: true,
         });
       }
 
       // Adicionar produtos sempre por último
       embed.fields.push({
-        name: '📦 Produtos',
-        value: items.map(item => `• ${item.name}`).join('\n'),
-        inline: false
+        name: "📦 Produtos",
+        value: items.map((item) => `• ${item.name}`).join("\n"),
+        inline: false,
       });
 
       const webhookData = {
-        embeds: [embed]
+        embeds: [embed],
       };
 
       // Enviar para todos os webhooks ativos
-      const promises = webhooks.map(webhook => 
-        axios.post(webhook.url, webhookData)
-          .catch(error => console.error(`Erro ao enviar webhook para ${webhook.url}:`, error))
+      const promises = webhooks.map((webhook) =>
+        axios
+          .post(webhook.url, webhookData)
+          .catch((error) =>
+            console.error(`Erro ao enviar webhook para ${webhook.url}:`, error)
+          )
       );
 
       await Promise.all(promises);
     } catch (error) {
-      console.error('Erro ao enviar webhook:', error);
+      console.error("Erro ao enviar webhook:", error);
     }
   }
 
   async getDashboardData(req, res) {
     try {
       const { period } = req.query;
-      
+
       // Ajustando para usar o fuso horário de São Paulo
       const now = `CONVERT_TZ(NOW(), '+00:00', '-03:00')`;
-      
+
       let startDate, endDate;
       switch (period) {
-        case 'today':
+        case "today":
           startDate = `DATE(${now})`;
           endDate = `DATE(${now} + INTERVAL 1 DAY)`;
           break;
-        case 'yesterday':
+        case "yesterday":
           startDate = `DATE(${now} - INTERVAL 1 DAY)`;
           endDate = `DATE(${now})`;
           break;
-        case 'week':
+        case "week":
           startDate = `DATE(${now} - INTERVAL 7 DAY)`;
           endDate = `DATE(${now} + INTERVAL 1 DAY)`;
           break;
-        case 'month':
+        case "month":
           startDate = `DATE(${now} - INTERVAL 30 DAY)`;
           endDate = `DATE(${now} + INTERVAL 1 DAY)`;
           break;
@@ -1006,39 +1060,39 @@ class PaymentController {
       `);
 
       res.json({
-        categoryStats: categoryStats.map(stat => ({
+        categoryStats: categoryStats.map((stat) => ({
           ...stat,
           name: stat.category_name,
           total_amount: Number(stat.total_amount),
-          total_sales: Number(stat.total_sales)
+          total_sales: Number(stat.total_sales),
         })),
-        pieChartData: pieChartData.map(item => ({
+        pieChartData: pieChartData.map((item) => ({
           ...item,
           value: Number(item.value),
-          amount: Number(item.amount)
+          amount: Number(item.amount),
         })),
-        weeklyStats: weeklyStats.map(stat => ({
+        weeklyStats: weeklyStats.map((stat) => ({
           ...stat,
           count: Number(stat.count),
-          total: Number(stat.total)
+          total: Number(stat.total),
         })),
-        recentSales: recentSales.map(sale => ({
+        recentSales: recentSales.map((sale) => ({
           ...sale,
-          product_names: sale.product_names.split(','),
+          product_names: sale.product_names.split(","),
           amount: Number(sale.amount),
-          completed_at: sale.completed_at
+          completed_at: sale.completed_at,
         })),
-        topProducts: topProducts.map(product => ({
+        topProducts: topProducts.map((product) => ({
           ...product,
           total_amount: Number(product.total_amount),
-          total_sales: Number(product.total_sales)
-        }))
+          total_sales: Number(product.total_sales),
+        })),
       });
     } catch (error) {
-      console.error('Erro ao buscar dados do dashboard:', error);
-      res.status(500).json({ error: 'Erro ao buscar dados do dashboard' });
+      console.error("Erro ao buscar dados do dashboard:", error);
+      res.status(500).json({ error: "Erro ao buscar dados do dashboard" });
     }
   }
 }
 
-module.exports = new PaymentController(); 
+module.exports = new PaymentController();

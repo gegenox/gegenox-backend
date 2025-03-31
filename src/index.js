@@ -1,6 +1,6 @@
 require("dotenv").config();
 const https = require("https");
-const app = require("../app");
+const app = require("./app");
 const db = require("./config/database");
 // const sslConfig = require("./config/ssl");
 
@@ -12,10 +12,10 @@ async function startServer() {
     console.log("Conectado ao banco de dados");
     connection.release();
 
-    const httpsServer = https.createServer(app);
+    // const httpsServer = https.createServer(app);
 
-    httpsServer.listen(PORT, () => {
-      console.log(`Servidor HTTPS rodando na porta ${PORT}`);
+    app.listen(PORT, () => {
+      console.log(`Servidor HTTPS rodando localhost:${PORT}`);
     });
   } catch (err) {
     console.error("Erro ao iniciar servidor:", err);
