@@ -20,7 +20,13 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(cors());
+app.use(
+  cors({
+    origin: "https://ggnoxofc.com",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 // Pasta de uploads
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
