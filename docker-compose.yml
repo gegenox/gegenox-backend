@@ -14,4 +14,4 @@ services:
 
 networks:
   ggnoxofc_network:
-    external: true
+    driver: bridge
