@@ -36,7 +36,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api", routes);
 
 // Configurar webhook ao iniciar a aplicação
-// setupWebhook().catch(console.error);
+setupWebhook().catch(console.error);
 
 // Error handler global
 app.use((err, req, res, next) => {
