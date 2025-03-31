@@ -3,7 +3,7 @@ const path = require("path");
 const routes = require("./routes");
 const db = require("./config/database");
 const setupWebhook = require("./config/setupWebhook");
-import cors from "cors";
+const cors = require("cors");
 
 const app = express();
 
