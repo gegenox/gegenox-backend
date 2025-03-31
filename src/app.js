@@ -23,8 +23,8 @@ app.use((req, res, next) => {
 app.use(
   cors({
     origin: "https://ggnoxofc.com",
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "X-Requested-With"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
   })
 );
 
