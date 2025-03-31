@@ -22,7 +22,7 @@ app.use((req, res, next) => {
 
 app.use(
   cors({
-    origin: "*",
+    origin: "https://ggnoxofc.com", // Defina apenas o domínio autorizado
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
